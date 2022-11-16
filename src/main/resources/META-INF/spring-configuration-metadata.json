@@ -1,0 +1,22 @@
+{
+  "groups": [{
+    "name": "dynamicDatasourceConfig",
+    "type": "com.evan.dynamicdatasource.config.DynamicDataSourceConfig",
+    "sourceType": "com.evan.dynamicdatasource.config.DynamicDataSourceConfig"
+  }],
+  "properties": [
+    {
+      "name": "evan.dynamic.dataSource.defaultDataSourceKey",
+      "type": "java.lang.String",
+      "description": "默认数据源Key,默认取当前配置数据源的第一个",
+      "sourceType": "com.evan.dynamicdatasource.config.DynamicDataSourceConfig"
+    },
+    {
+      "name": "evan.dynamic.dataSource.propertiesFilePath",
+      "type": "java.lang.String",
+      "description": "数据源配置的配置文件，默认加载classpath:datasource.properties",
+      "sourceType": "com.evan.dynamicdatasource.config.DynamicDataSourceConfig"
+    }
+  ],
+  "hints": []
+}

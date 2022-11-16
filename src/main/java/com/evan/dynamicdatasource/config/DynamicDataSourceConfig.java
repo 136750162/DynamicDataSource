@@ -3,6 +3,7 @@ package com.evan.dynamicdatasource.config;
 import com.alibaba.druid.pool.DruidDataSource;
 import com.alibaba.druid.util.StringUtils;
 import com.evan.dynamicdatasource.aop.DynamicDataSourceAspect;
+import com.evan.dynamicdatasource.config.druid.DruidDynamicDataSourceConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -17,10 +18,7 @@ import org.springframework.core.io.Resource;
 import javax.annotation.PostConstruct;
 import javax.sql.DataSource;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
+import java.util.*;
 
 /**
  * &#064;Description
@@ -29,18 +27,27 @@ import java.util.Set;
  */
 @Configuration
 @AutoConfigureOrder(Ordered.HIGHEST_PRECEDENCE + 11)
-//@EnableConfigurationProperties(DynamicDataSourceConfig.class)
+@SuppressWarnings(value = {"rawtypes", "unchecked"})
 public  class  DynamicDataSourceConfig{
     private static final Logger log = LoggerFactory.getLogger(DynamicDataSourceConfig.class);
 
     private final static Map<String, Map<String, String>> PROPERTIES_MAP = new HashMap<>();
 
-    @Value("${spring.dataSource.defaultDataSourceKe:}")
+    /**
+     * 默认的分组key 如果此值不配置则取当前分组第一个数据源
+     */
+    @Value("${evan.dynamic.dataSource.defaultDataSourceKey:}")
     private String defaultDataSourceKey;
 
-    @Value("${spring.dataSource.propertiesFilePath: classpath:datasource.properties}")
+    /**
+     * 配置文件地址，默认为当前项目 相对路径下的 datasource.properties 文件
+     */
+    @Value("${evan.dynamic.dataSource.propertiesFilePath: classpath:datasource.properties}")
     private String propertiesFilePath;
 
+    /**
+     * 初始化记载数据源配置数据于 #PROPERTIES_MAP缓存中
+     */
     @PostConstruct
     public void init(){
         DefaultResourceLoader defaultResourceLoader = new DefaultResourceLoader();
@@ -57,10 +64,6 @@ public  class  DynamicDataSourceConfig{
                 String[] str = key.split("\\.");
                 String groupKey = str[0];
                 String valueKey = str[str.length - 1];
-                // 如果没有配置则默认取第一个
-                if (StringUtils.isEmpty(defaultDataSourceKey)){
-                    defaultDataSourceKey = groupKey;
-                }
                 Map<String, String> propertiesMap = DynamicDataSourceConfig.PROPERTIES_MAP.get(groupKey);
                 if (propertiesMap != null) {
                     propertiesMap.put(valueKey, value);
@@ -70,6 +73,10 @@ public  class  DynamicDataSourceConfig{
                     DynamicDataSourceConfig.PROPERTIES_MAP.put(groupKey, grouperMap);
                 }
             }
+            // 如果没有配置则默认取第一个
+            if (StringUtils.isEmpty(defaultDataSourceKey)){
+                defaultDataSourceKey = PROPERTIES_MAP.keySet().stream().findFirst().get();
+            }
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -77,10 +84,10 @@ public  class  DynamicDataSourceConfig{
 
     @Bean
     @Primary
-    public DataSource dynamicDataSource(){
+    public DataSource dynamicDataSource(DataSourceConfig druidDataSourceConfig){
         Map<Object, Object> targetDataSource = new HashMap<>();
         for (String groupKey : PROPERTIES_MAP.keySet()) {
-            targetDataSource.put(groupKey, getDataSource(PROPERTIES_MAP.get(groupKey)));
+            targetDataSource.put(groupKey, createDataSource(PROPERTIES_MAP.get(groupKey), groupKey, druidDataSourceConfig));
         }
         DynamicDataSourceRouting dataSource = new DynamicDataSourceRouting();
         dataSource.setTargetDataSources(targetDataSource);
@@ -88,53 +95,32 @@ public  class  DynamicDataSourceConfig{
         return dataSource;
     }
 
+    /**
+     * 初始化当前的切面入Spring容器中
+     * @return 返回当前@TargetDataSource注解切面类
+     */
     @Bean
     public DynamicDataSourceAspect dynamicDataSourceAspect(){
         return new DynamicDataSourceAspect();
     }
 
-    private  DataSource getDataSource(Map<String, String> propertiesMap){
-        DruidDataSource dataSource = new DruidDataSource();
-        setDefaultProperties(propertiesMap, dataSource);
-        setOtherDataSourceProperties(dataSource, propertiesMap);
+    @Bean
+    public DataSourceConfig<DruidDataSource> druidDataSourceConfig(){
+        return new DruidDynamicDataSourceConfig();
+    }
+
+    /**
+     * 创建数据源对象
+     *
+     * @param propertiesMap         数据源配置属性
+     * @param currentGroupKey       当前数据源的分组Key
+     * @param config 配置对象
+     * @return 返回创建好的了数据源对象
+     */
+    private  DataSource createDataSource(Map<String, String> propertiesMap, String currentGroupKey, DataSourceConfig config){
+        DataSource dataSource = config.createDataSource(propertiesMap, currentGroupKey);
+        config.setDefaultConfig(dataSource, propertiesMap, currentGroupKey);
+        config.setOtherConfig(dataSource, propertiesMap, currentGroupKey);
         return dataSource;
     }
-
-    private void setDefaultProperties(Map<String, String> propertiesMap, DruidDataSource dataSource) {
-        dataSource.setUrl(propertiesMap.get("url"));
-        dataSource.setUsername(propertiesMap.get("username"));
-        dataSource.setPassword(propertiesMap.get("password"));
-        //借用连接时执行validationQuery检测连接是否有效，做了这个配置会降低性能
-        dataSource.setTestOnBorrow(false);
-        //归还连接时执行validationQuery检测连接是否有效，做了这个配置会降低性能
-        dataSource.setTestOnReturn(false);
-        //如果检测失败，则连接将被从池中去除
-        dataSource.setTestWhileIdle(true);
-        dataSource.setTimeBetweenEvictionRunsMillis(propertiesMap.get("timeBetweenEvictionRunsMillis") != null ? Long.parseLong(propertiesMap.get("timeBetweenEvictionRunsMillis")) : 60000);//1分钟
-        // 设置最小活跃时间 默认值为30分钟
-        dataSource.setMinEvictableIdleTimeMillis(propertiesMap.get("minEvictableIdleTimeMillis") != null ? Long.parseLong(propertiesMap.get("minEvictableIdleTimeMillis")) : 300000);
-        dataSource.setMaxActive(propertiesMap.get("maxActive") != null ?  Integer.parseInt(propertiesMap.get("maxActive")): 20);
-        dataSource.setInitialSize(propertiesMap.get("initialSize") != null ?  Integer.parseInt(propertiesMap.get("initialSize")): 5);
-        dataSource.setMaxWait(propertiesMap.get("maxWait") != null ? Long.parseLong(propertiesMap.get("maxWait")) : 60000);
-        dataSource.setMinIdle(propertiesMap.get("minIdle") != null ?  Integer.parseInt(propertiesMap.get("minIdle")): 1);
-        dataSource.setValidationQuery("SELECT 1");
-        dataSource.setMaxOpenPreparedStatements(propertiesMap.get("maxOpenPreparedStatements") != null ?  Integer.parseInt(propertiesMap.get("maxOpenPreparedStatements")): 20);
-        dataSource.setMaxPoolPreparedStatementPerConnectionSize(propertiesMap.get("maxPoolPreparedStatementPerConnectionSize") != null ?  Integer.parseInt(propertiesMap.get("maxPoolPreparedStatementPerConnectionSize")): 20);
-        dataSource.setConnectProperties(getProperties(propertiesMap.get("connectProperties")));
-        dataSource.setDriverClassName(propertiesMap.get("driver-class-name"));
-    }
-    private Properties getProperties(String connectProperties) {
-        connectProperties = connectProperties == null ? "druid.stat.mergeSql=true;druid.stat.slowSqlMillis=5000": connectProperties;
-        Properties properties = new Properties();
-        String[] strings = connectProperties.split(";");
-        for (String item : strings) {
-            String[] split = item.split("=");
-            properties.setProperty(split[0], split[1]);
-        }
-        return properties;
-    }
-
-    protected  void setOtherDataSourceProperties(DataSource dataSource, Map<String, String> propertiesMap){
-
-    };
 }
