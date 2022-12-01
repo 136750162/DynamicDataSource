@@ -1,5 +1,5 @@
 package com.evan.dynamicdatasource.config;
-
+import com.evan.dynamicdatasource.config.druid.DruidDynamicDataSourceConfig;
 import javax.sql.DataSource;
 import java.util.Map;
 
@@ -12,9 +12,29 @@ import java.util.Map;
  */
 public interface DataSourceConfig<T extends DataSource> {
 
+    /**
+     * 创建数据源对象 默认使用 @see DruidDynamicDataSourceConfig
+     * @see DruidDynamicDataSourceConfig
+     * @param propertiesMap 配置属性
+     * @param currentGroupKey 当前分组Key
+     * @return 返回创建好的数据源对象
+     */
     T createDataSource(Map<String, String> propertiesMap, String currentGroupKey);
+
+    /**
+     * 设置默认的一些属性
+     * @param dataSource 数据源对象
+     * @param propertiesMap 属性配置
+     * @param currentGroupKey 当前数据源对象的分组Key
+     */
     void setDefaultConfig(T dataSource, Map<String, String> propertiesMap, String currentGroupKey);
 
+    /**
+     * 设置数据源其他的一些属性配置
+     * @param dataSource 数据源对象
+     * @param propertiesMap 属性配置
+     * @param currentGroupKey 当前数据源对象的分组Key
+     */
     default void setOtherConfig(T dataSource, Map<String, String> propertiesMap, String currentGroupKey){
 
     }

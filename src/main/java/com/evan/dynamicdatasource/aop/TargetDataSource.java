@@ -7,7 +7,6 @@ import java.lang.annotation.Target;
 
 /**
  * 设置数据源的分组名
- *
  * &#064;Description
  * &#064;Author Evan
  * &#064;Date 2022/11/14 15:55
@@ -18,7 +17,7 @@ public @interface TargetDataSource {
 
     /**
      * 需要指定的数据源分组Key
-     * @return
+     * @return 返回指定的数据源分组Key
      */
     String value();
 }

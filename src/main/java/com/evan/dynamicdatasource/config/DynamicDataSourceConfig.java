@@ -21,11 +21,14 @@ import java.io.IOException;
 import java.util.*;
 
 /**
+ * 动态数据源的一个自动配置类
+ *
  * &#064;Description
  * &#064;Author Evan
  * &#064;Date 2022/11/14 13:42
  */
 @Configuration
+//配置这个是为了让其在Mybatis自动配置类前去加载，防止Mybatis自动配置类提前加载找不到数据源的一个问题
 @AutoConfigureOrder(Ordered.HIGHEST_PRECEDENCE + 11)
 @SuppressWarnings(value = {"rawtypes", "unchecked"})
 public  class  DynamicDataSourceConfig{
@@ -82,6 +85,11 @@ public  class  DynamicDataSourceConfig{
         }
     }
 
+    /**
+     * 动态数据源的一个配置注册
+     * @param druidDataSourceConfig 数据源的配置独享
+     * @return 动态数据源对象
+     */
     @Bean
     @Primary
     public DataSource dynamicDataSource(DataSourceConfig druidDataSourceConfig){
@@ -104,6 +112,10 @@ public  class  DynamicDataSourceConfig{
         return new DynamicDataSourceAspect();
     }
 
+    /**
+     * 默认初始化Druid数据源对象到Spring容器中
+     * @return 创建好的数据源对象
+     */
     @Bean
     public DataSourceConfig<DruidDataSource> druidDataSourceConfig(){
         return new DruidDynamicDataSourceConfig();

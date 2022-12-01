@@ -21,6 +21,12 @@ import java.lang.reflect.Method;
 public class DynamicDataSourceAspect {
     private static final Logger log = LoggerFactory.getLogger(DynamicDataSourceAspect.class);
 
+
+    /**
+     * 切面拦截方法，拦截被注解@TargetDataSource标注的方法，进行拦截并且设置数据源分组名称
+     * @param point 切点
+     * @return 目标方法的返回值
+     */
     @Around("@annotation(com.evan.dynamicdatasource.aop.TargetDataSource)")
     public Object setDataSource(ProceedingJoinPoint point){
         String targetDataSourceGroupKey = null;
