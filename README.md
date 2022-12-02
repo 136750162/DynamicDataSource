@@ -8,3 +8,6 @@
     <version>0.1.1</version>
 </dependency>
 ```
+使用只需要编写好配置文件添加注解@TargetDataSource("数据源分组Key")
+配置文件编写按照
+第一层级为分组Key、最后层级为最终的属性的Key格式编写配置即可
