@@ -1,0 +1,3 @@
+# DynamicDataSource
+基于Spring开发的数据库动态数据源
+简单实用0侵入禁止商用，仅供参考与学习
